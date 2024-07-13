@@ -27,19 +27,19 @@ def set_seed(seed):
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument(
-        '--dataset', choices=["CIFAR10", "CIFAR10-C", "CIFAR100", "Melanoma", "SVHN", "GTSRB", "Flowers102", "DTD", "Food101", "EuroSAT", "OxfordIIITPet", "UCF101", "FMoW"], required=True)
-    p.add_argument('--datapath', type=str, required=True)
+        '--dataset', choices=["CIFAR10", "CIFAR10-C", "CIFAR100", "Melanoma", "SVHN", "GTSRB", "Flowers102", "DTD", "Food101", "EuroSAT", "OxfordIIITPet", "UCF101", "FMoW"], default="CIFAR10")
+    p.add_argument('--datapath', type=str, default="./output_data")
     p.add_argument('--download', type=int, choices=[0, 1], default=0)
     
     p.add_argument('--param_tune', type=int, choices=[0, 1], default=0) 
     p.add_argument('--LR_WD_tune', type=int, choices=[0, 1], default=0) 
     p.add_argument(
-        '--pretrained', choices=["vgg16_bn", "resnet18", "resnet50", "resnext101_32x8d", "ig_resnext101_32x8d", "vit_b_16", "swin_t", "clip", "clip_large", "clip_ViT_B_32"], default="swin_t")
+        '--pretrained', choices=["vgg16_bn", "resnet18", "resnet50", "resnext101_32x8d", "ig_resnext101_32x8d", "vit_b_16", "swin_t", "clip", "clip_large", "clip_ViT_B_32"], default="resnet18")
     
 
-    p.add_argument('--mapping_method', choices=["fully_connected_layer_mapping", "frequency_based_mapping", "self_definded_mapping", "semantic_mapping"], default="fully_connected_layer_mapping")
-    p.add_argument('--img_scale', type=float, default=1.5) 
-    p.add_argument('--out_map_num', type=int, default=5) 
+    p.add_argument('--mapping_method', choices=["fully_connected_layer_mapping", "frequency_based_mapping", "self_definded_mapping", "semantic_mapping"], default="frequency_based_mapping")
+    p.add_argument('--img_scale', type=float, default=1.0) 
+    p.add_argument('--out_map_num', type=int, default=1) 
     p.add_argument('--train_resize', type=int, default=0) # 1, 0
     p.add_argument('--freqmap_interval', type=int, default=-1) # -1 or 1,2,3..
     p.add_argument('--weightinit', type=int, default=1) # 1, 0 

@@ -1,0 +1,14 @@
+
+
+tmp.log
+
+data
+data/*
+output_data
+output_data/*
+
+auto_vp/__pycache__
+
+CIFAR10_log_1_1.txt
+
+CIFAR10*

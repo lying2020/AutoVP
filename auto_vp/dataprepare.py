@@ -42,12 +42,12 @@ def DataPrepare(dataset_name, dataset_dir, target_size, mean=(0.485, 0.456, 0.40
 
     elif dataset_name == "CIFAR10":
         trainset = torchvision.datasets.CIFAR10(root=dataset_dir, train=True,
-                                                download=download, transform=transform)
+                                                download=True, transform=transform)
         trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
                                                   shuffle=True, num_workers=2)
 
         testset = torchvision.datasets.CIFAR10(root=dataset_dir, train=False,
-                                               download=download, transform=transform)
+                                               download=True, transform=transform)
         testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
                                                  shuffle=False, num_workers=2)
         
