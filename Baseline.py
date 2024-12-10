@@ -27,17 +27,29 @@ def set_seed(seed):
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
+
     p.add_argument(
-        '--dataset', choices=["CIFAR10", "CIFAR10-C", "CIFAR100", "Melanoma", "SVHN", "GTSRB", "Flowers102", "DTD", "Food101", "EuroSAT", "OxfordIIITPet", "UCF101", "FMoW"], required=True)
-    p.add_argument('--datapath', type=str, required=True)
+        '--dataset', default="tiny-imagenet-200", choices=["CIFAR10", "CIFAR10-C", "CIFAR100",  "tiny-imagenet-200", "Melanoma", "SVHN", "GTSRB", "Flowers102", "DTD", "Food101", "EuroSAT", "OxfordIIITPet", "UCF101", "FMoW"])
+    p.add_argument('--datapath', type=str, default="./results/data/")
     p.add_argument('--download', type=int, choices=[0, 1], default=0)
+    
+    p.add_argument('--param_tune', type=int, choices=[0, 1], default=0) 
+    p.add_argument('--LR_WD_tune', type=int, choices=[0, 1], default=0) 
     p.add_argument(
-        '--pretrained', choices=["vgg16_bn", "resnet18", "resnet50", "resnext101_32x8d", "ig_resnext101_32x8d", "vit_b_16", "clip", "clip_large", "swin_t"], default="clip")
+        '--pretrained', choices=["vgg16_bn", "resnet18", "resnet50", "resnext101_32x8d", "ig_resnext101_32x8d", "vit_b_16", "swin_t", "clip", "clip_large", "clip_ViT_B_32"], default="clip_ViT_B_32")
+
+    p.add_argument('--mapping_method', choices=["fully_connected_layer_mapping", "frequency_based_mapping", "self_definded_mapping", "semantic_mapping"], default="frequency_based_mapping")
+    p.add_argument('--img_scale', type=float, default=1.27) 
+    p.add_argument('--out_map_num', type=int, default=1) 
+    p.add_argument('--train_resize', type=int, default=1) # 1, 0
+    p.add_argument('--freqmap_interval', type=int, default=2) # -1 or 1,2,3..
+    p.add_argument('--weightinit', type=int, default=1) # 1, 0 
+
     p.add_argument('--epoch', type=int, default=200)
-    p.add_argument('--lr', type=float, default=0.001) # IG: 0.001, SWIN: 0.001 or 0.0001
+    p.add_argument('--lr', type=float, default=40) 
     p.add_argument('--seed', type=int, default=7)
 
-    p.add_argument('--scalibility_rio', type=int, choices=[1, 2, 4, 10, 100], default=1)
+    p.add_argument('--scalibility_rio', type=int, choices=[1, 2, 4, 10, 100], default=1) 
     p.add_argument('--scalibility_mode', choices=["equal", "random"], default="equal") 
     p.add_argument('--baseline', choices=["LP", "FF", "Scartch", "CLIP_TP", "CLIP_LP"], default="CLIP_LP") 
     args = p.parse_args()
@@ -77,7 +89,7 @@ if __name__ == '__main__':
         model = models.vit_b_16(weights=models.ViT_B_16_Weights.DEFAULT)
     elif args.pretrained == "swin_t":
         model = models.swin_t(weights=models.Swin_T_Weights.DEFAULT)
-    elif args.pretrained == "clip":
+    elif args.pretrained == "clip" or args.pretrained == "clip_ViT_B_32":
         model, clip_preprocess = clip.load("ViT-B/32", device=device)
         # https://github.com/openai/CLIP/issues/57
         for p in model.parameters(): 
@@ -122,7 +134,7 @@ if __name__ == '__main__':
 
     # Training
     best_val_acc = 0.
-    fname = f"{args.dataset}_{args.baseline}_1_{args.scalibility_rio}.txt"
+    fname = f"results_auto_vp/{args.dataset}_{args.baseline}_1_{args.scalibility_rio}.txt"
     if(args.pretrained[0:4] != "clip" and args.baseline[0:4] == "CLIP"):
         raise Exception(f"{args.pretrained} not supported {args.baseline}")
     elif(args.baseline == "LP"):
@@ -136,7 +148,7 @@ if __name__ == '__main__':
         best_val_acc = CLIP_Pure(model, testloader, class_names, device, wild_dataset=wild_dataset)
     elif(args.baseline == "CLIP_LP" and args.pretrained == "clip_large"):  
         best_val_acc = CLIP_LP(fname, model, trainloader, testloader, class_num, args.epoch, args.lr, device, b_l="l", wild_dataset=wild_dataset)
-    elif(args.baseline == "CLIP_LP" and args.pretrained == "clip"): 
+    elif(args.baseline == "CLIP_LP" and (args.pretrained == "clip" or args.pretrained == "clip_ViT_B_32")): 
         best_val_acc = CLIP_LP(fname, model, trainloader, testloader, class_num, args.epoch, args.lr, device, wild_dataset=wild_dataset)
 
     print("Best Validation Accuracy: ", best_val_acc)

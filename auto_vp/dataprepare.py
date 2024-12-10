@@ -12,6 +12,11 @@ import pandas as pd
 from sklearn.model_selection import KFold, StratifiedKFold, train_test_split
 from tqdm.auto import tqdm
 import os
+import json
+import zipfile
+import requests
+
+
 
 def refine_classnames(class_names):
     for i, class_name in enumerate(class_names):
@@ -41,6 +46,7 @@ def DataPrepare(dataset_name, dataset_dir, target_size, mean=(0.485, 0.456, 0.40
         class_names = ["Autism", "Control"]
 
     elif dataset_name == "CIFAR10":
+        dataset_dir = os.path.join(dataset_dir, "cifar10")
         trainset = torchvision.datasets.CIFAR10(root=dataset_dir, train=True,
                                                 download=True, transform=transform)
         trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
@@ -54,6 +60,7 @@ def DataPrepare(dataset_name, dataset_dir, target_size, mean=(0.485, 0.456, 0.40
         class_names = refine_classnames(testset.classes)
 
     elif dataset_name == "CIFAR100":
+        dataset_dir = os.path.join(dataset_dir, "cifar100")
         trainset = torchvision.datasets.CIFAR100(root=dataset_dir, train=True,
                                                 download=download, transform=transform)
         trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
@@ -248,10 +255,89 @@ def DataPrepare(dataset_name, dataset_dir, target_size, mean=(0.485, 0.456, 0.40
             testset, batch_size=batch_size, shuffle=False, num_workers=2)
         
         class_names = refine_classnames(trainset.classes)
+    elif dataset_name == "tiny-imagenet-200":
+        dataset_dir = os.path.join(dataset_dir, dataset_name)
+        trainloader, testloader, class_names, trainset = prepare_tiny_imagenet(dataset_dir, transform)
     else:
         raise NotImplementedError(f"{dataset_name} not supported")
 
     return trainloader, testloader, class_names, trainset
+
+
+def prepare_tiny_imagenet(data_path, preprocess=None, preprocess_test=None):
+
+    # Create directory if it doesn't exist
+    os.makedirs(data_path, exist_ok=True)
+    # Download and extract the dataset if it's not already there
+    zip_path = os.path.join(data_path, 'tiny-imagenet-200.zip')
+    if not os.path.exists(os.path.join(data_path, 'tiny-imagenet-200')):
+        if not os.path.exists(zip_path):
+            print("Downloading Tiny ImageNet...")
+            url = "http://cs231n.stanford.edu/tiny-imagenet-200.zip"
+            r = requests.get(url, stream=True)
+            with open(zip_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        
+        print("Extracting Tiny ImageNet...")
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(data_path)
+    
+    # Paths for train and val directories
+    train_dir = os.path.join(data_path, 'tiny-imagenet-200', 'train')
+    val_dir = os.path.join(data_path, 'tiny-imagenet-200', 'val')
+    
+    # Prepare validation data structure if needed
+    val_img_dir = os.path.join(val_dir, 'images')
+    if os.path.exists(val_img_dir):
+        print("Restructuring validation data...")
+        val_dict = {}
+        with open(os.path.join(val_dir, 'val_annotations.txt'), 'r') as f:
+            for line in f.readlines():
+                parts = line.strip().split('\t')
+                val_dict[parts[0]] = parts[1]
+        
+        for img, folder in val_dict.items():
+            folder_path = os.path.join(val_dir, folder)
+            os.makedirs(folder_path, exist_ok=True)
+            os.rename(os.path.join(val_img_dir, img), os.path.join(folder_path, img))
+        
+        os.rmdir(val_img_dir)
+
+    if preprocess_test is None:
+        preprocess_test = preprocess
+
+    # Load the datasets
+    train_data = torchvision.datasets.ImageFolder(train_dir, transform=preprocess)
+    val_data = torchvision.datasets.ImageFolder(val_dir, transform=preprocess_test)
+    
+    # Create data loaders
+    loaders = {
+        'train': DataLoader(train_data, batch_size=128, shuffle=True, num_workers=4),
+        'test': DataLoader(val_data, batch_size=128, shuffle=False, num_workers=4)
+    }
+
+    # Read class names from words.txt
+    class_names = {}
+    with open(os.path.join(data_path, 'tiny-imagenet-200', 'words.txt'), 'r') as file:
+        for line in file:
+            parts = line.strip().split('\t')  # Assuming the ID and name are separated by a tab
+            class_id = parts[0]
+            class_name = parts[1]
+            class_names[class_id] = class_name
+
+    # Map class indices to actual names
+    idx_to_class = {v: k for k, v in train_data.class_to_idx.items()}
+    actual_class_names = [class_names[idx_to_class[idx]] for idx in range(len(idx_to_class))]
+
+    # Update class names in loaders
+    loaders['class_names'] = actual_class_names
+
+    trainloader, testloader = loaders['train'], loaders['test']
+    class_names = actual_class_names
+    trainset = train_data
+
+    return trainloader, testloader, actual_class_names, trainset
 
 def Data_Scalability(trainset, scalibility_rio, batch_size, mode="random", random_state=1, wild_dataset=False):
     total_index = range(0,len(trainset))

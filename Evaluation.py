@@ -14,7 +14,7 @@ from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import random
-from sklearn import manifold
+# from sklearn import manifold
 from torch.nn import functional as F
 import cv2
 import os
@@ -95,7 +95,8 @@ def t_SNE(model, pretrained_model, trainloader, testloader):
 
     feat_2 = np.array(feat_2)
     print(feat_2.shape)
-    X_tsne = manifold.TSNE(n_components=2, init='random', random_state=5, verbose=1).fit_transform(feat_2)
+    X_tsne = [i for range(10)]
+    # X_tsne = manifold.TSNE(n_components=2, init='random', random_state=5, verbose=1).fit_transform(feat_2)
 
     # Normalization the processed features 
     x_min, x_max = X_tsne.min(0), X_tsne.max(0)

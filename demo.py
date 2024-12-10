@@ -27,25 +27,24 @@ def set_seed(seed):
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument(
-        '--dataset', choices=["CIFAR10", "CIFAR10-C", "CIFAR100", "Melanoma", "SVHN", "GTSRB", "Flowers102", "DTD", "Food101", "EuroSAT", "OxfordIIITPet", "UCF101", "FMoW"], default="CIFAR10")
-    p.add_argument('--datapath', type=str, default="./output_data")
+        '--dataset', default="DTD", choices=["CIFAR10", "CIFAR10-C", "CIFAR100",  "tiny-imagenet-200", "Melanoma", "SVHN", "GTSRB", "Flowers102", "DTD", "Food101", "EuroSAT", "OxfordIIITPet", "UCF101", "FMoW"])
+    p.add_argument('--datapath', type=str, default="./results/data/")
     p.add_argument('--download', type=int, choices=[0, 1], default=0)
     
     p.add_argument('--param_tune', type=int, choices=[0, 1], default=0) 
     p.add_argument('--LR_WD_tune', type=int, choices=[0, 1], default=0) 
     p.add_argument(
-        '--pretrained', choices=["vgg16_bn", "resnet18", "resnet50", "resnext101_32x8d", "ig_resnext101_32x8d", "vit_b_16", "swin_t", "clip", "clip_large", "clip_ViT_B_32"], default="resnet18")
+        '--pretrained', choices=["vgg16_bn", "resnet18", "resnet50", "resnext101_32x8d", "ig_resnext101_32x8d", "vit_b_16", "swin_t", "clip", "clip_large", "clip_ViT_B_32"], default="clip_ViT_B_32")
     
-
     p.add_argument('--mapping_method', choices=["fully_connected_layer_mapping", "frequency_based_mapping", "self_definded_mapping", "semantic_mapping"], default="frequency_based_mapping")
-    p.add_argument('--img_scale', type=float, default=1.0) 
+    p.add_argument('--img_scale', type=float, default=1.27) 
     p.add_argument('--out_map_num', type=int, default=1) 
     p.add_argument('--train_resize', type=int, default=0) # 1, 0
-    p.add_argument('--freqmap_interval', type=int, default=-1) # -1 or 1,2,3..
+    p.add_argument('--freqmap_interval', type=int, default=2) # -1 or 1,2,3..
     p.add_argument('--weightinit', type=int, default=1) # 1, 0 
 
     p.add_argument('--epoch', type=int, default=200)
-    p.add_argument('--lr', type=float, default=0.001) 
+    p.add_argument('--lr', type=float, default=40) 
     p.add_argument('--seed', type=int, default=7)
 
     p.add_argument('--scalibility_rio', type=int, choices=[1, 2, 4, 10, 100], default=1) 
@@ -126,7 +125,7 @@ if __name__ == '__main__':
         wild_dataset = False
 
     # Tune parameter
-    file_name = f"{args.dataset}_log_1_{args.scalibility_rio}.txt"
+    file_name = f"results_auto_vp/{args.dataset}_log_1_{args.scalibility_rio}.txt"
     f = open(file_name,  "w+")
     if(param_tune == True):
         print("Warning: If you turn on param_tune, then the arguments will be ignored!")
@@ -172,7 +171,7 @@ if __name__ == '__main__':
         trainloader = Data_Scalability(trainset, args.scalibility_rio, BATCH_SIZE[args.dataset], mode=args.scalibility_mode, random_state=random_state, wild_dataset=wild_dataset) 
 
     # Training
-    fname = f"{args.dataset}_log_1_{args.scalibility_rio}.txt"
+    fname = f"results_auto_vp/{args.dataset}_log_1_{args.scalibility_rio}.txt"
     if(pretrained_model[0:4] == "clip"):
         CLIP_Training(args.dataset, fname, reprogram_model, trainloader, testloader, class_names, args.epoch, lr, weight_decay, device, freqmap_interval=freqmap_interval, wild_dataset=wild_dataset) # , convergence=True 
     else:

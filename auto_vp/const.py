@@ -177,6 +177,20 @@ RAY_MIN_EPOCH = {
     'ImageNet1k' : 2
 }
 
+CLASS_NUMBER['tiny-imagenet-200'] = 200
+
+MAP_NUMBER['tiny-imagenet-200'] = [1, 5, 10]  # 这里的值可能需要根据实际需求调整
+
+IMG_SIZE['tiny-imagenet-200'] = 128  # Tiny ImageNet的图像通常是64x64像素
+
+BATCH_SIZE['tiny-imagenet-200'] = 128  # 这个值可以根据你的硬件和需求调整
+
+RAY_BATCH_SIZE['tiny-imagenet-200'] = 128  # 同上
+
+RAY_MAX_EPOCH['tiny-imagenet-200'] = 5  # 这个值可以根据你的需求调整
+
+RAY_MIN_EPOCH['tiny-imagenet-200'] = 3  # 这个值可以根据你的需求调整
+
 NETMEAN = {
     'vgg16_bn' : [0.485, 0.456, 0.406],
     'resnet18' : [0.485, 0.456, 0.406],

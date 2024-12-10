@@ -14,6 +14,10 @@ import matplotlib.pyplot as plt
 from torch.nn.parameter import Parameter
 from torch.cuda.amp import autocast, GradScaler
 import clip
+import os
+from datetime import datetime
+
+from .plotter import Plotter, plotter
 
 def FreqLabelMap(model, trainloader, device,  wild_dataset=False):
     if(model.output_mapping.mapping_method == "frequency_based_mapping"): # model.no_output_mapping != 1 and 
@@ -39,6 +43,8 @@ def Training(dataset, fname, model, trainloader, testloader, class_names, Epoch,
 
     # Frequency mapping
     FreqLabelMap(model, trainloader, device)
+    save_path = f"results_auto_vp/_cnn_{dataset}"
+    os.makedirs(save_path, exist_ok=True)
 
     f = open(fname, "a")
     best_result = [-1, 0., 0., 1.] # epoch, traing acc, validation acc, resize scale
@@ -85,6 +91,9 @@ def Training(dataset, fname, model, trainloader, testloader, class_names, Epoch,
 
             total_train_loss = sum(train_loss) / len(train_loss)
             total_train_acc = sum(train_accs) / len(train_accs)
+            plotter.log(epoch, {f"train_tm_acc": total_train_loss})
+            plotter.log(epoch, {f"train_tm_loss": total_train_acc})
+
             if(model.no_trainable_resize == 0):
                 pbar.set_postfix_str(f"ACC: {total_train_acc*100:.2f}%, Loss: {total_train_loss:.4f}, Scale: {model.train_resize.scale.item():.4f}")
             else:
@@ -98,7 +107,7 @@ def Training(dataset, fname, model, trainloader, testloader, class_names, Epoch,
         scheduler.step()
 
     
-        if(epoch%10 ==0 or epoch == Epoch-1): 
+        if(epoch%2 ==0 or epoch == Epoch-1): 
             # Validation
             model.eval()
             valid_loss = []
@@ -128,6 +137,7 @@ def Training(dataset, fname, model, trainloader, testloader, class_names, Epoch,
 
             # update log
             f.write(f"Epoch {epoch+1} Testing, ACC: {total_valid_acc*100:.2f}%, Loss: {total_valid_loss:.4f}\n")
+            plotter.log(epoch, {f"evaluate_acc": acc, f"evaluate_loss": loss})
 
             if (total_valid_acc > best_result[2] or epoch == Epoch - 1):
                 ss = None
@@ -149,11 +159,13 @@ def Training(dataset, fname, model, trainloader, testloader, class_names, Epoch,
                 }
                 if(total_valid_acc > best_result[2]):
                     best_result = [epoch, total_train_acc, total_valid_acc, ss]
-                    torch.save(state_dict, str(dataset) + "_best.pth")
+                    torch.save(state_dict, os.path.join(save_path, "result_best.pth"))
                 if(epoch == Epoch - 1):
-                    torch.save(state_dict, str(dataset) + "_last.pth")
+                    torch.save(state_dict, os.path.join(save_path, "result_last.pth"))
 
     f.close()
+
+    plotter.finish(save_path)
 
     return best_result
 
@@ -182,6 +194,8 @@ def CLIP_Training(dataset, fname, model, trainloader, testloader, class_names, E
 
     # Frequency mapping
     FreqLabelMap(model, trainloader, device, wild_dataset=wild_dataset)
+    save_path = f"results_auto_vp/_clip_vp_{dataset}"
+    os.makedirs(save_path, exist_ok=True)
 
     # Convergence loss
     MseLoss = nn.MSELoss(reduction='sum')
@@ -292,13 +306,16 @@ def CLIP_Training(dataset, fname, model, trainloader, testloader, class_names, E
                 pbar.set_postfix_str(f"ACC: {total_train_acc*100:.2f}%, Loss: {total_train_loss:.4f}, Loss2: {total_train_loss2:.4f}")
             scheduler.step()
 
+            plotter.log(epoch, {f"train_tm_acc": total_train_loss})
+            plotter.log(epoch, {f"train_tm_loss": total_train_acc})
+
         # update log
         if(model.no_trainable_resize == 0):
             f.write(f"Epoch {epoch+1} Training Lr {optimizer.param_groups[0]['lr']:.1e}, ACC: {total_train_acc*100:.2f}%, Loss: {total_train_loss:.4f}, Loss2: {total_train_loss2:.4f}, Scale: {model.train_resize.scale.item():.4f}\n")
         else:
             f.write(f"Epoch {epoch+1} Training Lr {optimizer.param_groups[0]['lr']:.1e}, ACC: {total_train_acc*100:.2f}%, Loss: {total_train_loss:.4f}, Loss2: {total_train_loss2:.4f}\n")
         
-        if(epoch%10 ==0 or epoch == Epoch-1): 
+        if(epoch%1 ==0 or epoch == Epoch-1): 
             # Validation
             model.eval()
             valid_loss = []
@@ -329,6 +346,7 @@ def CLIP_Training(dataset, fname, model, trainloader, testloader, class_names, E
 
             # update log
             f.write(f"Epoch {epoch+1} Testing, ACC: {total_valid_acc*100:.2f}%, Loss: {total_valid_loss:.4f}\n")
+            plotter.log(epoch, {f"evaluate_acc": acc, f"evaluate_loss": loss})
 
             if (total_valid_acc > best_result[2] or epoch == Epoch - 1):
                 ss = None
@@ -350,10 +368,12 @@ def CLIP_Training(dataset, fname, model, trainloader, testloader, class_names, E
                 }
                 if(total_valid_acc > best_result[2]):
                     best_result = [epoch, total_train_acc, total_valid_acc, ss]
-                    torch.save(state_dict, str(dataset) + "_best.pth")
+                    torch.save(state_dict, os.path.join(save_path, "result_best.pth"))
                 if(epoch == Epoch - 1):
-                    torch.save(state_dict, str(dataset) + "_last.pth")
+                    torch.save(state_dict, os.path.join(save_path, "result_last.pth"))
     f.close()
+
+    plotter.finish(save_path)
 
     return best_result
 
@@ -450,6 +470,9 @@ def Training_pure_clip(fname, model, trainloader, testloader, Epoch, lr, device,
     t_max = Epoch * len(trainloader)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=t_max)
 
+    save_path = f"results_auto_vp/_clip_lp"
+    os.makedirs(save_path, exist_ok=True)
+
     total_train_acc = 0
     total_valid_acc = 0
     best_result = [-1, 0., 0.] # epoch, traing acc, validation acc
@@ -491,8 +514,10 @@ def Training_pure_clip(fname, model, trainloader, testloader, Epoch, lr, device,
             pbar.set_postfix_str(f"ACC: {total_train_acc*100:.2f}%, Loss: {total_train_loss:.4f}")
         # update log
         f.write(f"Epoch {epoch+1} Training, ACC: {total_train_acc*100:.2f}%, Loss: {total_train_loss:.4f}\n")
+        plotter.log(epoch, {f"train_tm_acc": total_train_loss})
+        plotter.log(epoch, {f"train_tm_loss": total_train_acc})
 
-        if(epoch%10 == 0 or epoch == Epoch-1): 
+        if(epoch%1 == 0 or epoch == Epoch-1): 
             # Validation
             model.eval()
             valid_loss = []
@@ -518,6 +543,7 @@ def Training_pure_clip(fname, model, trainloader, testloader, Epoch, lr, device,
                 pbar.set_postfix_str(f"ACC: {total_valid_acc*100:.2f}%, Loss: {total_valid_loss:.4f}")
             # update log
             f.write(f"Epoch {epoch+1} Testing, ACC: {total_valid_acc*100:.2f}%, Loss: {total_valid_loss:.4f}\n")
+            plotter.log(epoch, {f"evaluate_acc": total_valid_acc, f"evaluate_loss": total_valid_loss})
 
             if total_valid_acc > best_result[2]:
                 best_result = [epoch, total_train_acc, total_valid_acc]
@@ -526,7 +552,8 @@ def Training_pure_clip(fname, model, trainloader, testloader, Epoch, lr, device,
     print("Save! Acc: ", total_valid_acc)
     state_dict = {"model": model}
     torch.save(state_dict, fname.split(".")[0]+ ".pth")
-    
+    plotter.finish(save_path)
+
     f.close()
     return best_result[2]
 
